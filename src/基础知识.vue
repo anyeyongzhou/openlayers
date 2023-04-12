@@ -1,11 +1,5 @@
 <template>
   <div id="map" class="map_container"></div>
-  <div id="marker" ref="market"></div>
-  <div id="textInfo" ref="testInfo">我是text文本信息</div>
-  <div id="popup" class="ol-popup" ref="popup">
-    <a href="#" id="popup-closer" class="ol-popup-closer" ref="popupCloser"></a>
-    <div id="popup-content" class="popup-content" ref="popupContent"></div>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -13,39 +7,14 @@ import { ref, onMounted } from "vue"
 import { Map, View, Feature } from "ol" // 地图实例方法、视图方法
 import { Tile as TileLayer, Vector as VectorLayer } from "ol/layer" // 瓦片渲染方法,矢量图层方法
 import { Vector, XYZ } from "ol/source" //矢量数据源
+//import { fromLonLat } from 'ol/proj'// 当投影EPSG:3857时选择fromLonLat方法能将坐标从经度/纬度转换为其他投影
 import { Point, LineString } from "ol/geom" //几何点、线
 import * as control from "ol/control" //视图控件
-import { Style, Circle, Fill, Stroke, Text, Icon } from "ol/style.js" //设置样式：圆，填充，描边，文本,图片
+import { Style, Circle, Fill, Stroke, Text } from "ol/style.js" //设置样式：圆，填充，描边，文本
 import { GeoJSON, MVT } from "ol/format" //格式化数据,数据格式有GeoJSON,MVT等
-//地图投影的相关的方法，
-//get：获取指定代码的 Projection 对象；
-//toLonLat：将坐标转换为经度/纬度；
-//当投影EPSG:3857时选择fromLonLat方法能将坐标从经度/纬度转换为其他投影;
-//transform将坐标从源投影转换为目标投影;等等，具体见文档
-import {
-  get as getProjection,
-  toLonLat,
-  fromLonLat,
-  transform
-} from "ol/proj.js"
-import * as interaction from "ol/interaction" //地图交互功能
-import Overlay from "ol/Overlay" //覆盖物
-import {
-  toStringHDMS,
-  add,
-  createStringXY,
-  format,
-  rotate,
-  toStringXY
-} from "ol/coordinate" //对经纬度坐标进行处理：toStringHDMS将坐标抓换为经纬度
 
 const map = ref()
-const popup = ref()
-const popupCloser = ref()
-const popupContent = ref()
 const vectorLayer = ref()
-const market = ref()
-const testInfo = ref()
 let gaode = null
 
 const initMap = () => {
@@ -98,13 +67,8 @@ const initMap = () => {
     view: mapView, //视图
     controls: control
       .defaults()
-      .extend([zoomToExtent, zoomslider, fullScreen, scaleLine, mousePosition]), //加载地图控件
-    interactions: interaction
-      .defaults()
-      .extend([new interaction.DragRotateAndZoom()])
+      .extend([zoomToExtent, zoomslider, fullScreen, scaleLine, mousePosition]) //加载地图控件
   })
-  //添加交互功能DragBox
-  map.value.addInteraction(new interaction.DragBox())
 
   //设置矢量图形
   drawVectorLayer(map.value)
@@ -125,19 +89,7 @@ const initMap = () => {
     gjdrawPointFeature(map.value, coordinate) //描点
 
     flyPerspective(map.value, coordinate) //view移动
-
-    //点击地图出现点标记
-    addPinotMarket(map.value, coordinate)
-
-    //点击地图出现文本
-    addText(map.value, coordinate)
   })
-
-  //制作GIF动画
-  drawGif(map.value)
-
-  //点击地图出现Popup弹窗
-  addPopup(map.value)
 
   //解决控件重叠
   document
@@ -338,82 +290,12 @@ const onloadNetworkData = (map: any) => {
 
 //漫游
 const flyPerspective = (map: any, position: number[]) => {
+  console.log(typeof map)
   map.getView().animate({
     center: position,
     zoom: 10,
     duration: 2000
   })
-}
-
-//在画布中制作 GIF 动画
-const drawGif = (map: any) => {}
-
-//点击地图出现Popup弹窗
-const addPopup = (map: any) => {
-  // 使用变量存储弹窗所需的 DOM 对象
-  let container = popup.value
-  let closer = popupCloser.value
-  let content = popupContent.value
-
-  // 创建一个弹窗 Overlay 对象
-  const overlay = new Overlay({
-    element: container, //绑定 Overlay 对象和 DOM 对象的
-    autoPan: {
-      animation: {
-        duration: 250
-      }
-    }
-  })
-  // 将弹窗添加到 map 地图中
-  map.addOverlay(overlay)
-
-  /**
-   * 为弹窗添加一个响应关闭的函数
-   */
-  closer!.onclick = () => {
-    overlay.setPosition(undefined)
-    closer!.blur()
-    return false
-  }
-  /**
-   * 添加单击map 响应函数来处理弹窗动作
-   */
-  map.on("singleclick", (evt: any) => {
-    //使用EPSG:4326
-    let coordinate = evt.coordinate
-    //使用EPSG:3857
-    //let coordinate = transform(evt.coordinate, "EPSG:3857", "EPSG:4326")
-    // 点击尺 （这里是尺(米)，并不是经纬度）;
-    let hdms = toStringHDMS(evt.coordinate) // 转换为经纬度显示
-    content!.innerHTML = `
-        <p>你点击了这里：</p>
-        <p>经纬度：<p><code> ${hdms}  </code> <p>
-        <p>坐标：</p>X:${coordinate[0]} &nbsp;&nbsp; Y: ${coordinate[1]}`
-    overlay.setPosition(evt.coordinate) //把 overlay 显示到指定的 x,y坐标
-  })
-}
-
-//overlay实现点击地图出现点标记
-const addPinotMarket = (map: any, coordinate: number[]) => {
-  let marketElement = market.value
-  let markerOverLay = new Overlay({
-    position: coordinate,
-    positioning: "center-center",
-    element: marketElement,
-    stopEvent: false
-  })
-  map.addOverlay(markerOverLay)
-}
-
-//overlay实现text文本信息
-const addText = (map: any, coordinate: number[]) => {
-  const textElement = testInfo.value
-  var textInfo = new Overlay({
-    position: coordinate,
-    offset: [20, -20],
-    element: textElement
-  })
-  map.addOverlay(textInfo)
 }
 
 onMounted(() => {
@@ -427,65 +309,5 @@ onMounted(() => {
 }
 #map .ol-zoomslider {
   top: 6.5em;
-}
-.ol-popup {
-  position: absolute;
-  background-color: white;
-  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #cccccc;
-  bottom: 12px;
-  left: -50px;
-}
-.ol-popup:after,
-.ol-popup:before {
-  top: 100%;
-  border: solid transparent;
-  content: " ";
-  height: 0;
-  width: 0;
-  position: absolute;
-  pointer-events: none;
-}
-.ol-popup:after {
-  border-top-color: white;
-  border-width: 10px;
-  left: 48px;
-  margin-left: -10px;
-}
-.ol-popup:before {
-  border-top-color: #cccccc;
-  border-width: 11px;
-  left: 48px;
-  margin-left: -11px;
-}
-.ol-popup-closer {
-  text-decoration: none;
-  position: absolute;
-  top: 2px;
-  right: 8px;
-}
-.popup-content {
-  width: 400px;
-}
-.ol-popup-closer:after {
-  content: "✖";
-}
-#marker {
-  width: 20px;
-  height: 20px;
-  background: red;
-  border-radius: 50%;
-}
-#textInfo {
-  width: 200px;
-  height: 40px;
-  line-height: 40px;
-  background: burlywood;
-  color: yellow;
-  text-align: center;
-  font-size: 20px;
 }
 </style>

@@ -1,7 +1,5 @@
 <template>
   <div id="map" class="map_container"></div>
-  <div id="marker" ref="market"></div>
-  <div id="textInfo" ref="testInfo">我是text文本信息</div>
   <div id="popup" class="ol-popup" ref="popup">
     <a href="#" id="popup-closer" class="ol-popup-closer" ref="popupCloser"></a>
     <div id="popup-content" class="popup-content" ref="popupContent"></div>
@@ -30,22 +28,13 @@ import {
 } from "ol/proj.js"
 import * as interaction from "ol/interaction" //地图交互功能
 import Overlay from "ol/Overlay" //覆盖物
-import {
-  toStringHDMS,
-  add,
-  createStringXY,
-  format,
-  rotate,
-  toStringXY
-} from "ol/coordinate" //对经纬度坐标进行处理：toStringHDMS将坐标抓换为经纬度
+import { toStringHDMS } from "ol/coordinate"
 
 const map = ref()
 const popup = ref()
 const popupCloser = ref()
 const popupContent = ref()
 const vectorLayer = ref()
-const market = ref()
-const testInfo = ref()
 let gaode = null
 
 const initMap = () => {
@@ -125,12 +114,6 @@ const initMap = () => {
     gjdrawPointFeature(map.value, coordinate) //描点
 
     flyPerspective(map.value, coordinate) //view移动
-
-    //点击地图出现点标记
-    addPinotMarket(map.value, coordinate)
-
-    //点击地图出现文本
-    addText(map.value, coordinate)
   })
 
   //制作GIF动画
@@ -338,6 +321,7 @@ const onloadNetworkData = (map: any) => {
 
 //漫游
 const flyPerspective = (map: any, position: number[]) => {
+  console.log(typeof map)
   map.getView().animate({
     center: position,
     zoom: 10,
@@ -370,7 +354,7 @@ const addPopup = (map: any) => {
   /**
    * 为弹窗添加一个响应关闭的函数
    */
-  closer!.onclick = () => {
+  closer!.onclick = function () {
     overlay.setPosition(undefined)
     closer!.blur()
     return false
@@ -378,42 +362,17 @@ const addPopup = (map: any) => {
   /**
    * 添加单击map 响应函数来处理弹窗动作
    */
-  map.on("singleclick", (evt: any) => {
-    //使用EPSG:4326
-    let coordinate = evt.coordinate
-    //使用EPSG:3857
-    //let coordinate = transform(evt.coordinate, "EPSG:3857", "EPSG:4326")
+  map.on("singleclick", function (evt: any) {
+    console.log(evt.coordinate)
+    let coordinate = transform(evt.coordinate, "EPSG:3857", "EPSG:4326")
     // 点击尺 （这里是尺(米)，并不是经纬度）;
-    let hdms = toStringHDMS(evt.coordinate) // 转换为经纬度显示
+    let hdms = toStringHDMS(toLonLat(evt.coordinate)) // 转换为经纬度显示
     content!.innerHTML = `
         <p>你点击了这里：</p>
         <p>经纬度：<p><code> ${hdms}  </code> <p>
         <p>坐标：</p>X:${coordinate[0]} &nbsp;&nbsp; Y: ${coordinate[1]}`
     overlay.setPosition(evt.coordinate) //把 overlay 显示到指定的 x,y坐标
   })
-}
-
-//overlay实现点击地图出现点标记
-const addPinotMarket = (map: any, coordinate: number[]) => {
-  let marketElement = market.value
-  let markerOverLay = new Overlay({
-    position: coordinate,
-    positioning: "center-center",
-    element: marketElement,
-    stopEvent: false
-  })
-  map.addOverlay(markerOverLay)
-}
-
-//overlay实现text文本信息
-const addText = (map: any, coordinate: number[]) => {
-  const textElement = testInfo.value
-  var textInfo = new Overlay({
-    position: coordinate,
-    offset: [20, -20],
-    element: textElement
-  })
-  map.addOverlay(textInfo)
 }
 
 onMounted(() => {
@@ -472,20 +431,5 @@ onMounted(() => {
 }
 .ol-popup-closer:after {
   content: "✖";
-}
-#marker {
-  width: 20px;
-  height: 20px;
-  background: red;
-  border-radius: 50%;
-}
-#textInfo {
-  width: 200px;
-  height: 40px;
-  line-height: 40px;
-  background: burlywood;
-  color: yellow;
-  text-align: center;
-  font-size: 20px;
 }
 </style>
