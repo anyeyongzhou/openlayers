@@ -59,6 +59,40 @@ const initMap = () => {
     layers: [gaode], // 图层
     view: mapView //视图
   })
+
+  const coordinates = [
+    [87.532236, 44.284182],
+    [104.043505, 30.58165],
+    [116.397289, 39.928632]
+  ]
+
+  //添加GIF动画
+  addGif(coordinates)
+}
+
+//在画布中添加gif动态图
+const addGif = (coordinates: Array<Array<number>>) => {
+  let mapDom = map_ref.value
+  for (let i = 0; i < coordinates.length; i++) {
+    let oDiv = document.createElement("div")
+    const divStyle =
+      "display: block;width: 20px;height: 42px;border-radius: 50%;background: url('" +
+      gif +
+      "') no-repeat;background-size: 20px 42px;border: 1px solid black;"
+    oDiv.setAttribute("style", divStyle)
+    oDiv.id = "gif-" + i
+    mapDom.appendChild(oDiv)
+    nextTick(() => {
+      const gifDom = document.getElementById("gif-" + i)
+      const markerPoint = new Overlay({
+        position: fromLonLat([coordinates[i][0], coordinates[i][1]]),
+        positioning: "center-center",
+        element: gifDom ? gifDom : undefined,
+        stopEvent: false
+      })
+      map.value.addOverlay(markerPoint)
+    })
+  }
 }
 
 onMounted(() => {
